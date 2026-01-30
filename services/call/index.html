@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anonymous Audio Call - SISO</title>
+  <link rel="stylesheet" href="../../core/ui.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --call-primary: #667eea;
+      --call-secondary: #764ba2;
+      --call-success: #38b2ac;
+      --call-warning: #ed8936;
+      --call-danger: #f56565;
+    }
+    
+    .call-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .call-header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .call-header h1 {
+      color: var(--call-primary);
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+    
+    .call-header .tagline {
+      color: #718096;
+      font-size: 1.1em;
+    }
+    
+    .status-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e2e8f0;
+    }
+    
+    .status-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .status-text {
+      font-size: 1.2em;
+      font-weight: 600;
+      color: #2d3748;
+    }
+    
+    .online-count {
+      background: var(--call-success);
+      color: white;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+    
+    .preferences-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 12px;
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    
+    .preferences-card h3 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .language-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .language-option {
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+    }
+    
+    .language-option:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+    
+    .language-option.active {
+      background: white;
+      color: var(--call-primary);
+      border-color: white;
+      font-weight: bold;
+    }
+    
+    .language-flag {
+      font-size: 2em;
+      margin-bottom: 8px;
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin: 30px 0;
+    }
+    
+    .btn-call {
+      padding: 18px 40px;
+      font-size: 1.3em;
+      font-weight: bold;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-width: 200px;
+    }
+    
+    .btn-start {
+      background: linear-gradient(135deg, var(--call-success) 0%, #2f855a 100%);
+      color: white;
+    }
+    
+    .btn-start:hover:not(:disabled) {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px rgba(56, 178, 172, 0.3);
+    }
+    
+    .btn-cancel {
+      background: linear-gradient(135deg, var(--call-danger) 0%, #c53030 100%);
+      color: white;
+    }
+    
+    .btn-cancel:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px rgba(245, 101, 101, 0.3);
+    }
+    
+    .btn-call:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    .tips-card {
+      background: #ebf8ff;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 25px 0;
+      border-left: 4px solid #4299e1;
+    }
+    
+    .tips-card h4 {
+      color: #2b6cb0;
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .tips-list {
+      list-style: none;
+      padding: 0;
+      margin: 15px 0 0 0;
+    }
+    
+    .tips-list li {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #4a5568;
+    }
+    
+    .call-area {
+      background: #1a202c;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-top: 20px;
+      min-height: 500px;
+      position: relative;
+    }
+    
+    .call-placeholder {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: #a0aec0;
+      width: 100%;
+      padding: 20px;
+    }
+    
+    .call-placeholder i {
+      font-size: 4em;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+    
+    .debug-panel {
+      background: #f7fafc;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 20px;
+      font-size: 0.9em;
+      color: #718096;
+      border: 1px solid #e2e8f0;
+    }
+    
+    .debug-panel summary {
+      cursor: pointer;
+      font-weight: bold;
+    }
+    
+    .progress-bar {
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--call-primary), var(--call-secondary));
+      width: 0%;
+      transition: width 0.3s;
+      border-radius: 3px;
+    }
+    
+    .matching-info {
+      text-align: center;
+      margin: 20px 0;
+      padding: 15px;
+      background: #f0fff4;
+      border-radius: 8px;
+      border: 1px solid #c6f6d5;
+    }
+    
+    .language-badge {
+      display: inline-block;
+      background: var(--call-primary);
+      color: white;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.9em;
+      margin: 0 5px;
+    }
+    
+    @media (max-width: 768px) {
+      .language-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .action-buttons {
+        flex-direction: column;
+      }
+      
+      .btn-call {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="call-container">
+    <!-- Header -->
+    <div class="call-header">
+      <a href="../../index.html" style="position: absolute; left: 20px; top: 20px; color: #666; text-decoration: none;">
+        <i class="fas fa-arrow-left"></i> Back
+      </a>
+      <h1><i class="fas fa-phone-alt"></i> SISO Call</h1>
+      <p class="tagline">Anonymous, safe conversations with strangers</p>
+    </div>
+    
+    <!-- Status Card -->
+    <div class="status-card">
+      <div class="status-info">
+        <div class="status-text" id="statusText">
+          <i class="fas fa-user-clock"></i> Ready to connect
+        </div>
+        <div class="online-count">
+          <i class="fas fa-users"></i> <span id="onlineCount">0</span> online
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div id="matchingInfo"></div>
+    </div>
+    
+    <!-- Preferences Card -->
+    <div class="preferences-card">
+      <h3><i class="fas fa-sliders-h"></i> Call Preferences</h3>
+      <p>Select your preferred language for matching:</p>
+      
+      <div class="language-grid" id="languageGrid">
+        <!-- Languages populated by JavaScript -->
+      </div>
+      
+      <div style="margin-top: 20px;">
+        <label style="display: block; margin-bottom: 8px; opacity: 0.9;">
+          <input type="checkbox" id="allowAnyLanguage" checked>
+          Allow matching with any language if preferred not available
+        </label>
+      </div>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <button id="startCall" class="btn-call btn-start">
+        <i class="fas fa-phone-alt"></i> Start Anonymous Call
+      </button>
+      <button id="cancelCall" class="btn-call btn-cancel" style="display: none;">
+        <i class="fas fa-times"></i> Cancel Search
+      </button>
+    </div>
+    
+    <!-- Tips Card -->
+    <div class="tips-card">
+      <h4><i class="fas fa-lightbulb"></i> Tips for Great Conversations</h4>
+      <ul class="tips-list">
+        <li><i class="fas fa-heart"></i> Be respectful and kind to everyone</li>
+        <li><i class="fas fa-ear-listen"></i> Listen as much as you speak</li>
+        <li><i class="fas fa-shield-alt"></i> Never share personal information</li>
+        <li><i class="fas fa-flag"></i> Report inappropriate behavior immediately</li>
+        <li><i class="fas fa-door-open"></i> You can end the call anytime</li>
+      </ul>
+    </div>
+    
+    <!-- Call Area -->
+    <div class="call-area" id="callArea">
+      <div class="call-placeholder" id="callPlaceholder">
+        <i class="fas fa-phone"></i>
+        <h3>Call Interface</h3>
+        <p>Start a call to begin your conversation</p>
+        <p style="font-size: 0.9em; margin-top: 10px;">
+          <i class="fas fa-info-circle"></i>
+          Your call is completely anonymous and encrypted
+        </p>
+      </div>
+    </div>
+    
+    <!-- Debug Panel (optional) -->
+    <details class="debug-panel">
+      <summary>Debug Information</summary>
+      <div style="margin-top: 10px;">
+        <div>User ID: <span id="debugUserId">-</span></div>
+        <div>Status: <span id="debugStatus">idle</span></div>
+        <div>Queue Size: <span id="debugQueueSize">0</span></div>
+        <div>Selected Language: <span id="debugLanguage">Te</span></div>
+        <div style="margin-top: 10px;">
+          <button onclick="window.debugCall.clearQueue()" style="padding: 5px 10px; margin-right: 10px;">
+            Clear Queue
+          </button>
+          <button onclick="window.debugCall.reset()" style="padding: 5px 10px;">
+            Reset
+          </button>
+        </div>
+      </div>
+    </details>
+  </div>
+  
+  <!-- Jitsi SDK -->
+  <script src="https://meet.jit.si/external_api.js"></script>
+  
+  <!-- Main Script -->
+  <script type="module" src="call.js"></script>
+</body>
+</html>

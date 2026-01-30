@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎧 SISO - Talk. Relax. Connect.</title>
+  <link rel="stylesheet" href="core/ui.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <h1><i class="fas fa-headphones-alt"></i> SISO</h1>
+      <p class="tagline">Talk. Relax. Connect. Your safe space for anonymous conversations</p>
+      
+      <div class="status-bar">
+        <div class="stats">
+          <span><i class="fas fa-users"></i> <span id="onlineCount">0</span> online now</span>
+          <span style="margin-left: 20px;"><i class="fas fa-comments"></i> <span id="postCount">0</span> experiences shared</span>
+        </div>
+        <div class="user-info">
+          <div class="avatar" id="userAvatar" style="width: 40px; height: 40px; border-radius: 50%; background: #007bff; display: inline-flex; align-items: center; justify-content: center; color: white; font-weight: bold;">AN</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="service-grid">
+      <div class="service-card">
+        <div class="service-icon" style="color: #FF6B6B;">
+          <i class="fas fa-share-alt fa-2x"></i>
+        </div>
+        <h3>Share Experience</h3>
+        <p>Anonymously share your thoughts, stories, and experiences with supportive listeners</p>
+        <a href="services/experience/index.html" class="btn btn-secondary">
+          <i class="fas fa-plus-circle"></i> Share Now
+        </a>
+      </div>
+      
+      <div class="service-card">
+        <div class="service-icon" style="color: #4ECDC4;">
+          <i class="fas fa-phone-alt fa-2x"></i>
+        </div>
+        <h3>Audio Call</h3>
+        <p>Connect with random people for meaningful conversations. Completely anonymous.</p>
+        <a href="services/call/index.html" class="btn btn-success">
+          <i class="fas fa-phone"></i> Start Call
+        </a>
+      </div>
+      
+      <div class="service-card">
+        <div class="service-icon" style="color: #FFD166;">
+          <i class="fas fa-briefcase fa-2x"></i>
+        </div>
+        <h3>Promote Business</h3>
+        <p>Showcase your business or services to our community in a non-intrusive way</p>
+        <a href="services/business/index.html" class="btn">
+          <i class="fas fa-rocket"></i> Promote Now
+        </a>
+      </div>
+    </div>
+    
+    <div class="card" style="margin-top: 30px; text-align: center;">
+      <h3>How it Works</h3>
+      <div style="display: flex; justify-content: space-around; flex-wrap: wrap; margin-top: 20px;">
+        <div style="flex: 1; min-width: 200px; padding: 10px;">
+          <i class="fas fa-user-secret fa-2x" style="color: #667eea;"></i>
+          <h4>Anonymous</h4>
+          <p>No registration needed</p>
+        </div>
+        <div style="flex: 1; min-width: 200px; padding: 10px;">
+          <i class="fas fa-shield-alt fa-2x" style="color: #667eea;"></i>
+          <h4>Safe Space</h4>
+          <p>Respectful community</p>
+        </div>
+        <div style="flex: 1; min-width: 200px; padding: 10px;">
+          <i class="fas fa-bolt fa-2x" style="color: #667eea;"></i>
+          <h4>Instant Connect</h4>
+          <p>Real-time conversations</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module">
+    import { supabase } from "./core/supabase.js";
+    import { getRandomColor, getInitials } from "./core/utils.js";
+    
+    // Set random user avatar
+    document.getElementById('userAvatar').style.background = getRandomColor();
+    
+    // Fetch live stats
+    async function updateStats() {
+      try {
+        // Get online users in call queue
+        const { data: onlineData } = await supabase
+          .from('call_queue')
+          .select('id');
+        
+        // Get total experiences
+        const { data: experienceData } = await supabase
+          .from('experiences')
+          .select('id');
+        
+        document.getElementById('onlineCount').textContent = onlineData?.length || 0;
+        document.getElementById('postCount').textContent = experienceData?.length || 0;
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    }
+    
+    updateStats();
+    setInterval(updateStats, 10000); // Update every 10 seconds
+  </script>
+</body>
+</html>

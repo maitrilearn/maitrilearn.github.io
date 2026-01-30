@@ -1,0 +1,269 @@
+-- ============================================
+-- SISO BUSINESS PROMOTION - DATABASE SETUP
+-- ============================================
+
+-- 1. Create businesses table (if not exists)
+CREATE TABLE IF NOT EXISTS businesses (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  category TEXT,
+  contact TEXT,
+  contact_type TEXT DEFAULT 'email', -- email, phone, website, social
+  location TEXT,
+  tags TEXT[] DEFAULT '{}',
+  views INTEGER DEFAULT 0,
+  likes INTEGER DEFAULT 0,
+  verified BOOLEAN DEFAULT FALSE,
+  featured BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  
+  -- Constraints
+  CONSTRAINT valid_category CHECK (
+    category IN ('Food', 'Tech', 'Health', 'Education', 'Retail', 'Service', 'Other', 'Local', 'Online', 'Startup')
+  ),
+  CONSTRAINT valid_contact_type CHECK (
+    contact_type IN ('email', 'phone', 'website', 'whatsapp', 'instagram', 'facebook', 'twitter')
+  )
+);
+
+-- 2. Create business_likes table for tracking likes
+CREATE TABLE IF NOT EXISTS business_likes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(business_id, user_id)
+);
+
+-- 3. Create business_views table for detailed view tracking
+CREATE TABLE IF NOT EXISTS business_views (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  viewed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 4. Create business_categories table for predefined categories
+CREATE TABLE IF NOT EXISTS business_categories (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  icon TEXT,
+  description TEXT,
+  color TEXT DEFAULT '#667eea'
+);
+
+-- 5. Insert default categories
+INSERT INTO business_categories (name, icon, description, color) VALUES
+  ('Food', '🍔', 'Restaurants, cafes, food delivery', '#FF6B6B'),
+  ('Tech', '💻', 'Technology services, apps, software', '#4ECDC4'),
+  ('Health', '🏥', 'Healthcare, wellness, fitness', '#06D6A0'),
+  ('Education', '🎓', 'Courses, tutoring, educational services', '#118AB2'),
+  ('Retail', '🛍️', 'Shops, stores, online retail', '#FFD166'),
+  ('Service', '🔧', 'Various services', '#9D4EDD'),
+  ('Local', '📍', 'Local businesses', '#EF476F'),
+  ('Online', '🌐', 'Online businesses', '#1B9AAA'),
+  ('Startup', '🚀', 'Startups and new businesses', '#7209B7'),
+  ('Other', '📊', 'Other categories', '#6C757D')
+ON CONFLICT (name) DO NOTHING;
+
+-- 6. Disable RLS for testing
+ALTER TABLE businesses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE business_likes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE business_views DISABLE ROW LEVEL SECURITY;
+ALTER TABLE business_categories DISABLE ROW LEVEL SECURITY;
+
+-- 7. Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_businesses_category ON businesses(category);
+CREATE INDEX IF NOT EXISTS idx_businesses_created ON businesses(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_businesses_featured ON businesses(featured) WHERE featured = true;
+CREATE INDEX IF NOT EXISTS idx_businesses_views ON businesses(views DESC);
+CREATE INDEX IF NOT EXISTS idx_business_likes_business ON business_likes(business_id);
+CREATE INDEX IF NOT EXISTS idx_business_views_business ON business_views(business_id);
+
+-- 8. Create function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- 9. Create trigger for updated_at
+DROP TRIGGER IF EXISTS update_businesses_updated_at ON businesses;
+CREATE TRIGGER update_businesses_updated_at
+  BEFORE UPDATE ON businesses
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- 10. Create view for business statistics
+CREATE OR REPLACE VIEW vw_business_stats AS
+SELECT 
+  b.id,
+  b.title,
+  b.category,
+  b.views,
+  b.likes,
+  b.created_at,
+  (SELECT COUNT(*) FROM business_likes bl WHERE bl.business_id = b.id) as total_likes,
+  (SELECT COUNT(*) FROM business_views bv WHERE bv.business_id = b.id) as total_views_detailed,
+  (SELECT STRING_AGG(tag, ', ') FROM UNNEST(b.tags) as tag) as tags_list
+FROM businesses b
+ORDER BY b.created_at DESC;
+
+-- 11. Insert sample data (optional)
+INSERT INTO businesses (title, description, category, contact, contact_type, location, tags) VALUES
+  ('Tech Solutions Inc.', 'We provide cutting-edge software solutions for businesses of all sizes.', 'Tech', 'contact@techsolutions.com', 'email', 'Bangalore', ARRAY['software', 'technology', 'solutions']),
+  ('Healthy Bites Cafe', 'Organic cafe serving healthy and delicious meals.', 'Food', '@healthybites', 'instagram', 'Hyderabad', ARRAY['organic', 'healthy', 'cafe', 'food']),
+  ('LearnEasy Tutoring', 'Online tutoring services for students of all grades.', 'Education', '+91-9876543210', 'whatsapp', 'Online', ARRAY['education', 'tutoring', 'online']),
+  ('FitLife Gym', '24/7 gym with modern equipment and professional trainers.', 'Health', 'www.fitlifegym.com', 'website', 'Chennai', ARRAY['gym', 'fitness', 'health']),
+  ('Local Artisans Market', 'Handmade products from local artisans.', 'Retail', '@localartisans', 'instagram', 'Delhi', ARRAY['handmade', 'local', 'artisans'])
+ON CONFLICT DO NOTHING;
+
+-- 12. Test the setup
+SELECT '✅ Business tables created successfully' as status;
+SELECT COUNT(*) as total_businesses FROM businesses;
+SELECT name, COUNT(b.id) as business_count 
+FROM business_categories bc 
+LEFT JOIN businesses b ON bc.name = b.category 
+GROUP BY bc.name 
+ORDER BY bc.name
+
+
+
+
+
+-- ============================================
+-- SISO BUSINESS PROMOTION - DATABASE SETUP (BIGINT VERSION)
+-- ============================================
+
+-- 1. Create businesses table with BIGINT id
+CREATE TABLE IF NOT EXISTS businesses (
+  id BIGSERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  category TEXT,
+  contact TEXT,
+  contact_type TEXT DEFAULT 'email', -- email, phone, website, social
+  location TEXT,
+  tags TEXT[] DEFAULT '{}',
+  views INTEGER DEFAULT 0,
+  likes INTEGER DEFAULT 0,
+  verified BOOLEAN DEFAULT FALSE,
+  featured BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  
+  -- Constraints
+  CONSTRAINT valid_category CHECK (
+    category IN ('Food', 'Tech', 'Health', 'Education', 'Retail', 'Service', 'Other', 'Local', 'Online', 'Startup')
+  ),
+  CONSTRAINT valid_contact_type CHECK (
+    contact_type IN ('email', 'phone', 'website', 'whatsapp', 'instagram', 'facebook', 'twitter')
+  )
+);
+
+-- 2. Create business_likes table with BIGINT reference
+CREATE TABLE IF NOT EXISTS business_likes (
+  id BIGSERIAL PRIMARY KEY,
+  business_id BIGINT NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(business_id, user_id)
+);
+
+-- 3. Create business_views table with BIGINT reference
+CREATE TABLE IF NOT EXISTS business_views (
+  id BIGSERIAL PRIMARY KEY,
+  business_id BIGINT NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  viewed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 4. Create business_categories table for predefined categories
+CREATE TABLE IF NOT EXISTS business_categories (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  icon TEXT,
+  description TEXT,
+  color TEXT DEFAULT '#667eea'
+);
+
+-- 5. Insert default categories
+INSERT INTO business_categories (name, icon, description, color) VALUES
+  ('Food', '🍔', 'Restaurants, cafes, food delivery', '#FF6B6B'),
+  ('Tech', '💻', 'Technology services, apps, software', '#4ECDC4'),
+  ('Health', '🏥', 'Healthcare, wellness, fitness', '#06D6A0'),
+  ('Education', '🎓', 'Courses, tutoring, educational services', '#118AB2'),
+  ('Retail', '🛍️', 'Shops, stores, online retail', '#FFD166'),
+  ('Service', '🔧', 'Various services', '#9D4EDD'),
+  ('Local', '📍', 'Local businesses', '#EF476F'),
+  ('Online', '🌐', 'Online businesses', '#1B9AAA'),
+  ('Startup', '🚀', 'Startups and new businesses', '#7209B7'),
+  ('Other', '📊', 'Other categories', '#6C757D')
+ON CONFLICT (name) DO NOTHING;
+
+-- 6. Disable RLS for testing
+ALTER TABLE businesses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE business_likes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE business_views DISABLE ROW LEVEL SECURITY;
+ALTER TABLE business_categories DISABLE ROW LEVEL SECURITY;
+
+-- 7. Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_businesses_category ON businesses(category);
+CREATE INDEX IF NOT EXISTS idx_businesses_created ON businesses(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_businesses_featured ON businesses(featured) WHERE featured = true;
+CREATE INDEX IF NOT EXISTS idx_businesses_views ON businesses(views DESC);
+CREATE INDEX IF NOT EXISTS idx_business_likes_business ON business_likes(business_id);
+CREATE INDEX IF NOT EXISTS idx_business_views_business ON business_views(business_id);
+
+-- 8. Create function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- 9. Create trigger for updated_at
+DROP TRIGGER IF EXISTS update_businesses_updated_at ON businesses;
+CREATE TRIGGER update_businesses_updated_at
+  BEFORE UPDATE ON businesses
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- 10. Create view for business statistics
+CREATE OR REPLACE VIEW vw_business_stats AS
+SELECT 
+  b.id,
+  b.title,
+  b.category,
+  b.views,
+  b.likes,
+  b.created_at,
+  (SELECT COUNT(*) FROM business_likes bl WHERE bl.business_id = b.id) as total_likes,
+  (SELECT COUNT(*) FROM business_views bv WHERE bv.business_id = b.id) as total_views_detailed,
+  (SELECT STRING_AGG(tag, ', ') FROM UNNEST(b.tags) as tag) as tags_list
+FROM businesses b
+ORDER BY b.created_at DESC;
+
+-- 11. Insert sample data (optional)
+INSERT INTO businesses (title, description, category, contact, contact_type, location, tags) VALUES
+  ('Tech Solutions Inc.', 'We provide cutting-edge software solutions for businesses of all sizes.', 'Tech', 'contact@techsolutions.com', 'email', 'Bangalore', ARRAY['software', 'technology', 'solutions']),
+  ('Healthy Bites Cafe', 'Organic cafe serving healthy and delicious meals.', 'Food', '@healthybites', 'instagram', 'Hyderabad', ARRAY['organic', 'healthy', 'cafe', 'food']),
+  ('LearnEasy Tutoring', 'Online tutoring services for students of all grades.', 'Education', '+91-9876543210', 'whatsapp', 'Online', ARRAY['education', 'tutoring', 'online']),
+  ('FitLife Gym', '24/7 gym with modern equipment and professional trainers.', 'Health', 'www.fitlifegym.com', 'website', 'Chennai', ARRAY['gym', 'fitness', 'health']),
+  ('Local Artisans Market', 'Handmade products from local artisans.', 'Retail', '@localartisans', 'instagram', 'Delhi', ARRAY['handmade', 'local', 'artisans'])
+ON CONFLICT DO NOTHING;
+
+-- 12. Test the setup
+SELECT '✅ Business tables created successfully' as status;
+SELECT COUNT(*) as total_businesses FROM businesses;
+SELECT name, COUNT(b.id) as business_count 
+FROM business_categories bc 
+LEFT JOIN businesses b ON bc.name = b.category 
+GROUP BY bc.name 
+ORDER BY bc.name;;

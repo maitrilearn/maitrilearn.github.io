@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Share Experience - SISO</title>
+  <link rel="stylesheet" href="../../core/ui.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="container">
+    <div style="margin-bottom: 20px;">
+      <a href="../../index.html" style="color: #666; text-decoration: none;">
+        <i class="fas fa-arrow-left"></i> Back to Home
+      </a>
+    </div>
+    
+    <div class="card" style="margin-bottom: 20px;">
+      <h2><i class="fas fa-share-alt"></i> Share Your Experience</h2>
+      <p style="color: #666; margin-bottom: 20px;">Share your thoughts anonymously. Our community is here to listen.</p>
+      
+      <textarea id="content" placeholder="What's on your mind? Share your story, thought, or experience..."></textarea>
+      
+      <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px;">
+        <div style="flex: 1;">
+          <label for="category">Category:</label>
+          <select id="category">
+            <option value="Life">Life Experience</option>
+            <option value="Work">Work & Career</option>
+            <option value="Relationship">Relationships</option>
+            <option value="MentalHealth">Mental Health</option>
+            <option value="Advice">Seeking Advice</option>
+            <option value="Success">Success Story</option>
+          </select>
+        </div>
+        
+        <div style="flex: 1;">
+          <label for="mood">Current Mood:</label>
+          <select id="mood">
+            <option>😊 Happy</option>
+            <option>😢 Sad</option>
+            <option>😡 Angry</option>
+            <option>😌 Peaceful</option>
+            <option>🤔 Thoughtful</option>
+            <option>🎉 Celebrating</option>
+          </select>
+        </div>
+      </div>
+      
+      <button id="post" class="btn-success">
+        <i class="fas fa-paper-plane"></i> Share Experience
+      </button>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0;">
+      <div>
+        <h3>Community Experiences</h3>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <div>
+          <select id="sortSelect" style="width: auto;">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="likes">Most Liked</option>
+          </select>
+        </div>
+        <div style="display: flex; gap: 5px;">
+          <button class="filter-btn btn-secondary active" data-category="All">All</button>
+          <button class="filter-btn btn-secondary" data-category="Life">Life</button>
+          <button class="filter-btn btn-secondary" data-category="Work">Work</button>
+          <button class="filter-btn btn-secondary" data-category="MentalHealth">Mental Health</button>
+        </div>
+      </div>
+    </div>
+    
+    <div id="feed"></div>
+  </div>
+  
+  <script type="module" src="service.js"></script>
+</body>
+</html>

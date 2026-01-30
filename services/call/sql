@@ -1,0 +1,151 @@
+-- ============================================
+-- SISO CALL SYSTEM - DATABASE SETUP
+-- ============================================
+
+-- 1. Create call_queue table
+CREATE TABLE IF NOT EXISTS call_queue (
+  id BIGSERIAL PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  language TEXT NOT NULL DEFAULT 'Te',
+  status TEXT DEFAULT 'waiting',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  matched_at TIMESTAMP WITH TIME ZONE,
+  UNIQUE(user_id)
+);
+
+-- 2. Create call_sessions table (optional - for tracking)
+CREATE TABLE IF NOT EXISTS call_sessions (
+  id BIGSERIAL PRIMARY KEY,
+  room_id TEXT NOT NULL,
+  user1_id TEXT NOT NULL,
+  user2_id TEXT NOT NULL,
+  user1_language TEXT,
+  user2_language TEXT,
+  started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  ended_at TIMESTAMP WITH TIME ZONE,
+  duration_seconds INTEGER
+);
+
+-- 3. Create user_stats table (optional - for analytics)
+CREATE TABLE IF NOT EXISTS user_stats (
+  id BIGSERIAL PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  total_calls INTEGER DEFAULT 0,
+  total_duration INTEGER DEFAULT 0,
+  preferred_language TEXT,
+  last_active TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+
+-- 4. Disable RLS for easy testing (enable in production with proper policies)
+ALTER TABLE call_queue DISABLE ROW LEVEL SECURITY;
+ALTER TABLE call_sessions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE user_stats DISABLE ROW LEVEL SECURITY;
+
+-- 5. Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_call_queue_status ON call_queue(status);
+CREATE INDEX IF NOT EXISTS idx_call_queue_language ON call_queue(language);
+CREATE INDEX IF NOT EXISTS idx_call_queue_created ON call_queue(created_at);
+CREATE INDEX IF NOT EXISTS idx_call_sessions_room ON call_sessions(room_id);
+CREATE INDEX IF NOT EXISTS idx_user_stats_active ON user_stats(last_active);
+
+-- 6. Insert sample data (optional)
+INSERT INTO call_queue (user_id, language, status) VALUES
+  ('demo-user-1', 'Te', 'waiting'),
+  ('demo-user-2', 'En', 'waiting'),
+  ('demo-user-3', 'Ta', 'waiting')
+ON CONFLICT (user_id) DO NOTHING;
+
+-- 7. Create cleanup function (removes old queue entries)
+CREATE OR REPLACE FUNCTION cleanup_old_queue()
+RETURNS void AS $$
+BEGIN
+  DELETE FROM call_queue 
+  WHERE created_at < NOW() - INTERVAL '1 hour';
+END;
+$$ LANGUAGE plpgsql;
+
+-- 8. Create match_users function (advanced matching logic)
+CREATE OR REPLACE FUNCTION match_users()
+RETURNS TABLE(
+  user1_id TEXT,
+  user2_id TEXT,
+  user1_lang TEXT,
+  user2_lang TEXT,
+  match_score INTEGER
+) AS $$
+DECLARE
+  user1 RECORD;
+  user2 RECORD;
+BEGIN
+  -- Find waiting users ordered by wait time
+  FOR user1 IN 
+    SELECT * FROM call_queue 
+    WHERE status = 'waiting' 
+    ORDER BY created_at 
+    FOR UPDATE SKIP LOCKED
+  LOOP
+    -- Try to find matching user with same language
+    SELECT * INTO user2 
+    FROM call_queue 
+    WHERE status = 'waiting' 
+      AND user_id != user1.user_id 
+      AND language = user1.language
+      AND created_at < NOW() - INTERVAL '5 seconds'
+    LIMIT 1
+    FOR UPDATE SKIP LOCKED;
+    
+    -- If no same language, match with any
+    IF NOT FOUND THEN
+      SELECT * INTO user2 
+      FROM call_queue 
+      WHERE status = 'waiting' 
+        AND user_id != user1.user_id
+        AND created_at < NOW() - INTERVAL '5 seconds'
+      LIMIT 1
+      FOR UPDATE SKIP LOCKED;
+    END IF;
+    
+    -- If match found, return it
+    IF FOUND THEN
+      user1_id := user1.user_id;
+      user2_id := user2.user_id;
+      user1_lang := user1.language;
+      user2_lang := user2.language;
+      match_score := CASE 
+        WHEN user1.language = user2.language THEN 100 
+        ELSE 50 
+      END;
+      
+      -- Update status
+      UPDATE call_queue 
+      SET status = 'matched', matched_at = NOW()
+      WHERE user_id IN (user1.user_id, user2.user_id);
+      
+      RETURN NEXT;
+    END IF;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 9. View to see current queue status
+CREATE OR REPLACE VIEW vw_call_queue_status AS
+SELECT 
+  COUNT(*) as total_waiting,
+  COUNT(DISTINCT language) as languages_count,
+  language,
+  COUNT(*) as language_count,
+  AVG(EXTRACT(EPOCH FROM (NOW() - created_at))) as avg_wait_seconds,
+  MIN(created_at) as oldest_wait
+FROM call_queue 
+WHERE status = 'waiting'
+GROUP BY language;
+
+-- 10. Test the setup
+SELECT 'Tables created successfully' as status;
+
+-- Show current queue
+SELECT * FROM vw_call_queue_status;
+
+-- Test matching function
+-- SELECT * FROM match_users();
